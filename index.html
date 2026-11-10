@@ -1,0 +1,242 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FINDLY - Image Search</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #fff;
+  color: #202124;
+}
+
+header {
+  padding: 22px;
+  border-bottom: 1px solid #eee;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+header span {
+  color: #3563f5;
+}
+
+.container {
+  max-width: 1100px;
+  margin: auto;
+  padding: 45px 20px;
+}
+
+h1 {
+  text-align: center;
+  font-size: 38px;
+}
+
+.subtitle {
+  text-align: center;
+  color: #777;
+}
+
+.search {
+  display: flex;
+  max-width: 650px;
+  margin: 30px auto;
+  border: 1px solid #ddd;
+  border-radius: 14px;
+  padding: 7px;
+  box-shadow: 0 5px 20px #0000000a;
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  padding: 14px;
+  font-size: 16px;
+}
+
+.search button {
+  border: none;
+  background: #3563f5;
+  color: white;
+  padding: 13px 22px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+#status {
+  text-align: center;
+  color: #888;
+  margin: 20px;
+}
+
+.gallery {
+  columns: 4 200px;
+  column-gap: 15px;
+}
+
+.image-card {
+  break-inside: avoid;
+  margin-bottom: 15px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #eee;
+  background: white;
+}
+
+.image-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.image-card p {
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.image-card a {
+  display: inline-block;
+  margin: 0 12px 12px;
+  color: #3563f5;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+@media(max-width:600px) {
+  h1 { font-size: 30px; }
+  .gallery { columns: 2 130px; }
+}
+</style>
+</head>
+
+<body>
+
+<header>✳ <span>FINDLY</span></header>
+
+<div class="container">
+
+<h1>Discover anything.</h1>
+<p class="subtitle">
+Search the world through images.
+</p>
+
+<form class="search" id="searchForm">
+<input
+  id="searchInput"
+  type="search"
+  placeholder="Search anything..."
+  required
+>
+<button type="submit">Search</button>
+</form>
+
+<div id="status">Search for something to begin.</div>
+
+<div class="gallery" id="gallery"></div>
+
+</div>
+
+<script>
+const form = document.getElementById("searchForm");
+const input = document.getElementById("searchInput");
+const gallery = document.getElementById("gallery");
+const status = document.getElementById("status");
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const query = input.value.trim();
+
+  if (!query) return;
+
+  gallery.innerHTML = "";
+  status.textContent = "Finding images...";
+
+  try {
+    const params = new URLSearchParams({
+      action: "query",
+      generator: "search",
+      gsrsearch: query + " filetype:bitmap",
+      gsrnamespace: "6",
+      gsrlimit: "40",
+      prop: "imageinfo",
+      iiprop: "url",
+      iiurlwidth: "500",
+      format: "json",
+      origin: "*"
+    });
+
+    const response = await fetch(
+      "https://commons.wikimedia.org/w/api.php?" + params
+    );
+
+    if (!response.ok) throw new Error("Search failed");
+
+    const data = await response.json();
+
+    const pages = Object.values(
+      data.query?.pages || {}
+    );
+
+    if (pages.length === 0) {
+      status.textContent = "No images found. Try another search.";
+      return;
+    }
+
+    let count = 0;
+
+    pages.forEach(page => {
+      const image = page.imageinfo?.[0];
+
+      if (!image) return;
+
+      const card = document.createElement("div");
+      card.className = "image-card";
+
+      const img = document.createElement("img");
+      img.src = image.thumburl || image.url;
+      img.alt = page.title;
+      img.loading = "lazy";
+
+      img.onerror = () => card.remove();
+
+      const title = document.createElement("p");
+      title.textContent = page.title.replace("File:", "");
+
+      const link = document.createElement("a");
+      link.href = image.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Open / Download ↓";
+
+      card.appendChild(img);
+      card.appendChild(title);
+      card.appendChild(link);
+
+      gallery.appendChild(card);
+      count++;
+    });
+
+    status.textContent = count + " images found.";
+
+  } catch (error) {
+    status.textContent =
+      "Something went wrong. Check your internet connection.";
+    console.error(error);
+  }
+});
+</script>
+
+</body>
+</html>
